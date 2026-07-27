@@ -24,7 +24,7 @@
             --hard: #ef4444;
             --review: #8b5cf6;
             --completed-bg: rgba(16, 185, 129, 0.12);
-            --pending-bg: rgba(245, 158, 11, 0.12);
+            --pending-bg: rgba(245, 158, 11, 0.15);
             --box-shadow: 0 8px 32px 0 rgba(0, 68, 136, 0.1);
             --sub-card-bg: rgba(248, 250, 252, 0.8);
             --info-bg: rgba(241, 245, 249, 0.8);
@@ -46,7 +46,7 @@
             --hard: #dc2626;
             --review: #7c3aed;
             --completed-bg: rgba(5, 150, 105, 0.2);
-            --pending-bg: rgba(217, 119, 6, 0.2);
+            --pending-bg: rgba(217, 119, 6, 0.25);
             --box-shadow: 0 0 30px rgba(0, 240, 255, 0.08);
             --sub-card-bg: rgba(12, 12, 22, 0.7);
             --info-bg: rgba(6, 6, 12, 0.8);
@@ -549,8 +549,8 @@
         .day-card.is-pending {
             background-color: var(--pending-bg);
             border-left: 6px solid var(--medium);
-            border-color: rgba(245, 158, 11, 0.4);
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
         }
 
         .day-card.is-pending .day-title {
@@ -618,6 +618,41 @@
             background-color: var(--medium);
             color: white;
             border-color: var(--medium);
+        }
+
+        /* BARRA DE PROGRESSO DO DIA */
+        .day-progress-container {
+            margin-bottom: 16px;
+            background: var(--card-bg);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .day-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .day-progress-bar-bg {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .day-progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--medium), var(--easy));
+            border-radius: 4px;
+            transition: width 0.3s ease;
         }
 
         .badge {
@@ -1291,18 +1326,16 @@
         </div>
     </div>
 
-    <!-- MODAL DE PARABÉNS / CICLO CONCLUÍDO -->
+    <!-- MODAL DE PARABÉNS / CICLO OU DIA CONCLUÍDO -->
     <div class="settings-overlay" id="congratsModal">
         <div class="settings-card" style="text-align: center; max-width: 450px; border-top-color: var(--easy);">
             <div style="font-size: 3rem; margin-bottom: 10px;">🎉</div>
-            <h2 style="color: var(--easy); margin-bottom: 15px;">Parabéns, Ciclo Concluído!</h2>
+            <h2 id="congratsTitle" style="color: var(--easy); margin-bottom: 15px;">Parabéns, Dia Concluído!</h2>
             <p id="motivationalQuote" style="font-size: 1rem; font-style: italic; margin-bottom: 20px; color: var(--text);">
                 "O sucesso é a soma de pequenos esforços repetidos dia após dia."
             </p>
-            <p style="font-weight: bold; margin-bottom: 20px; color: var(--primary);">Deseja iniciar um novo ciclo de estudos agora?</p>
-            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn-login" onclick="startNewCycleFromModal()" style="background-color: var(--easy); margin-top: 0; flex: 1;">Sim, Novo Ciclo</button>
-                <button class="btn-login" onclick="closeCongrats()" style="background-color: var(--text-muted); margin-top: 0; flex: 1;">Continuar</button>
+            <div id="congratsButtons" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn-login" onclick="closeCongrats()" style="background-color: var(--easy); margin-top: 0; flex: 1;">Continuar Estudos</button>
             </div>
         </div>
     </div>
@@ -1613,6 +1646,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d1">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d1">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d1" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Conhecimentos Bancários, Atualidades do Mercado Financeiro</p>
@@ -1665,6 +1707,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d2">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d2">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d2" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Língua Portuguesa</p>
@@ -1712,6 +1763,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d3">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d3">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d3" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> TI: Banco de Dados (Fundamentos)</p>
@@ -1751,6 +1811,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d4" data-label="Dia 4 (Quinta-feira)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d4">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d4">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d4" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -1794,6 +1863,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d5">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d5">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d5" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> TI: Estruturas de Dados e Algoritmos (Parte 1)</p>
@@ -1835,6 +1913,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d6">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d6">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d6" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>6h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Conhecimentos Bancários (Moeda e Câmbio), Atualidades do Mercado Financeiro</p>
@@ -1874,6 +1961,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d7" data-label="Dia 7 (Domingo)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d7">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d7">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d7" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -1931,6 +2027,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d8">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d8">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d8" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Língua Portuguesa, Língua Inglesa</p>
@@ -1970,6 +2075,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d9" data-label="Dia 9 (Terça-feira)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d9">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d9">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d9" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2013,6 +2127,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d10">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d10">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d10" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Matemática (Proporcionalidade e Lógica)</p>
@@ -2054,6 +2177,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d11">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d11">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d11" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> TI: Estruturas de Dados e Algoritmos (Parte 2)</p>
@@ -2089,6 +2221,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d12" data-label="Dia 12 (Sexta-feira)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d12">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d12">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d12" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2132,6 +2273,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d13">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d13">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d13" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>6h</span></p>
                             <p><strong>Disciplinas Foco:</strong> TI: NoSQL, Data Warehouse e Big Data, Atualidades do Mercado Financeiro</p>
@@ -2171,6 +2321,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d14" data-label="Dia 14 (Domingo)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d14">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d14">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d14" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2228,6 +2387,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d15">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d15">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d15" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Língua Portuguesa</p>
@@ -2267,6 +2435,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d16" data-label="Dia 16 (Terça-feira)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d16">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d16">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d16" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2310,6 +2487,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d17">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d17">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d17" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> Probabilidade e Estatística (Descritiva e Probabilidade)</p>
@@ -2349,6 +2535,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d18" data-label="Dia 18 (Quinta-feira)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d18">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d18">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d18" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2392,6 +2587,15 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d19">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d19">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d19" style="width: 0%;"></div>
+                            </div>
+                        </div>
                         <div class="day-info">
                             <p><strong>Carga:</strong> <span>2h</span></p>
                             <p><strong>Disciplinas Foco:</strong> TI: Desenvolvimento Mobile</p>
@@ -2431,6 +2635,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d20" data-label="Dia 20 (Sábado)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d20">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d20">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d20" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2473,6 +2686,15 @@
                                 <label class="day-done-btn">
                                     <input type="checkbox" class="day-checkbox" id="done-d21" data-label="Dia 21 (Domingo)"> Concluir Dia
                                 </label>
+                            </div>
+                        </div>
+                        <div class="day-progress-container">
+                            <div class="day-progress-header">
+                                <span id="day-progress-text-d21">0% do dia concluído!</span>
+                                <span id="day-progress-pct-d21">0%</span>
+                            </div>
+                            <div class="day-progress-bar-bg">
+                                <div class="day-progress-bar-fill" id="day-progress-fill-d21" style="width: 0%;"></div>
                             </div>
                         </div>
                         <div class="day-info">
@@ -2720,7 +2942,7 @@
                 `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
 
-        /* --- GERENCIAR PENDENTES --- */
+        /* --- GERENCIAR PENDENTES (CORRIGIDO) --- */
         function togglePending(dayId, dayLabel) {
             const card = document.getElementById(dayId);
             const btn = document.getElementById("pending-" + dayId);
@@ -2728,28 +2950,22 @@
             const isCurrentlyPending = card.classList.contains("is-pending");
 
             if (!isCurrentlyPending) {
-                const conf = confirm("Deseja marcar o dia como pendente?");
-                if (conf) {
-                    card.classList.add("is-pending");
-                    btn.style.backgroundColor = "var(--medium)";
-                    btn.style.color = "#fff";
-                    if (navLink) {
-                        navLink.classList.remove("done-nav");
-                        navLink.classList.add("pending-nav");
-                    }
-                    localStorage.setItem("bb_pending_" + dayId, "true");
-                    addHistoryEntry(`Marcado como Pendente: ${dayLabel}`);
+                card.classList.add("is-pending");
+                btn.style.backgroundColor = "var(--medium)";
+                btn.style.color = "#fff";
+                if (navLink) {
+                    navLink.classList.remove("done-nav");
+                    navLink.classList.add("pending-nav");
                 }
+                localStorage.setItem("bb_pending_" + dayId, "true");
+                addHistoryEntry(`Marcado como Pendente: ${dayLabel}`);
             } else {
-                const conf = confirm("Deseja remover o status de pendente deste dia?");
-                if (conf) {
-                    card.classList.remove("is-pending");
-                    btn.style.backgroundColor = "";
-                    btn.style.color = "";
-                    if (navLink) navLink.classList.remove("pending-nav");
-                    localStorage.removeItem("bb_pending_" + dayId);
-                    addHistoryEntry(`Removido status pendente: ${dayLabel}`);
-                }
+                card.classList.remove("is-pending");
+                btn.style.backgroundColor = "";
+                btn.style.color = "";
+                if (navLink) navLink.classList.remove("pending-nav");
+                localStorage.removeItem("bb_pending_" + dayId);
+                addHistoryEntry(`Removido status pendente: ${dayLabel}`);
             }
         }
 
@@ -2768,6 +2984,37 @@
                 addHistoryEntry(`Desmarcado sub-tópico: ${labelName}`);
                 updateDashboardStats();
             }
+            // Atualiza barra de progresso do dia correspondente
+            const dayId = microId.split('-')[0];
+            updateDayProgress(dayId);
+        }
+
+        /* --- ATUALIZAR BARRA DE PROGRESSO DO DIA --- */
+        function updateDayProgress(dayId) {
+            const card = document.getElementById(dayId);
+            if (!card) return;
+
+            const topics = card.querySelectorAll('.status-badge-btn');
+            const micros = card.querySelectorAll('.micro-chk');
+            const checks = card.querySelectorAll('.sub-checkbox');
+
+            let totalItems = topics.length + micros.length + checks.length;
+            if (totalItems === 0) return;
+
+            let completedItems = 0;
+            topics.forEach(t => { if (t.classList.contains('done')) completedItems++; });
+            micros.forEach(m => { if (m.checked) completedItems++; });
+            checks.forEach(c => { if (c.checked) completedItems++; });
+
+            const pct = Math.round((completedItems / totalItems) * 100);
+
+            const fillEl = document.getElementById(`day-progress-fill-${dayId}`);
+            const textEl = document.getElementById(`day-progress-text-${dayId}`);
+            const pctEl = document.getElementById(`day-progress-pct-${dayId}`);
+
+            if (fillEl) fillEl.style.width = pct + "%";
+            if (textEl) textEl.innerText = `${pct}% do dia concluído!`;
+            if (pctEl) pctEl.innerText = `${pct}%`;
         }
 
         /* --- CURVA DE APRENDIZAGEM & SIMULADOS (COM TEMPO E LINK) --- */
@@ -2920,7 +3167,7 @@
             listContainer.innerHTML = listHtml;
         }
 
-        /* --- GERADOR DE RELATÓRIO GRÁFICO EM PDF (HISTÓRICO) --- */
+        /* --- GERADOR DE RELATÓRIO GRÁFICO EM PDF (CORRIGIDO PARA O HISTÓRICO) --- */
         function downloadGraphicalPDFReport() {
             const history = JSON.parse(localStorage.getItem("bb_history_log") || "[]");
             const days = document.querySelectorAll('.day-checkbox');
@@ -3103,11 +3350,6 @@
             addHistoryEntry("Gerado e baixado relatório de simulados em PDF com dashboard");
         }
 
-        /* --- DOWNLOAD DO HISTÓRICO E DASHBOARD EM TXT (COMPATIBILIDADE) --- */
-        function downloadHistoryAndDashboardReport() {
-            downloadGraphicalPDFReport();
-        }
-
         /* --- BACKUP E RESTAURAÇÃO DE DADOS --- */
         function exportData() {
             let data = {};
@@ -3143,9 +3385,9 @@
             reader.readAsText(file);
         }
 
-        /* --- ANIMAÇÃO DE CONFETES E MODAL DE PARABÉNS --- */
+        /* --- ANIMAÇÃO DE CONFETES E MODAL DE PARABÉNS (DIA OU CICLO) --- */
         function triggerConfetti() {
-            const colors = ['#0284c7', '#7c3aed', '#10b981', '#38bdf8'];
+            const colors = ['#0284c7', '#7c3aed', '#10b981', '#38bdf8', '#f59e0b'];
             for (let i = 0; i < 120; i++) {
                 const confetti = document.createElement('div');
                 confetti.style.position = 'fixed';
@@ -3172,10 +3414,13 @@
             }
         }
 
-        function showCongratsModal() {
+        function showCongratsModal(titleText = "Parabéns, Dia Concluído!") {
             const modal = document.getElementById("congratsModal");
+            const titleEl = document.getElementById("congratsTitle");
             const quoteEl = document.getElementById("motivationalQuote");
             const randomPhrase = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
+            
+            if (titleEl) titleEl.innerText = titleText;
             if (quoteEl) quoteEl.innerText = randomPhrase;
             if (modal) modal.style.display = "flex";
             triggerConfetti();
@@ -3184,11 +3429,6 @@
         function closeCongrats() {
             const modal = document.getElementById("congratsModal");
             if (modal) modal.style.display = "none";
-        }
-
-        function startNewCycleFromModal() {
-            closeCongrats();
-            resetProgress();
         }
 
         /* --- MODAL DE DASHBOARD E CONFIG --- */
@@ -3557,6 +3797,9 @@
                         localStorage.setItem(btn.id, "todo");
                         addHistoryEntry(`Conteúdo desmarcado: ${title}`);
                     }
+                    // Identifica o dia e atualiza a barra de progresso do dia
+                    const card = btn.closest('.day-card');
+                    if(card) updateDayProgress(card.id);
                 });
             });
 
@@ -3576,6 +3819,8 @@
                     } else {
                         chk.parentElement.classList.remove("checked");
                     }
+                    const card = chk.closest('.day-card');
+                    if(card) updateDayProgress(card.id);
                 });
             });
 
@@ -3616,6 +3861,7 @@
                         if (navLink) navLink.classList.add("done-nav");
                         addHistoryEntry(`Concluído: ${label}`);
                         updateStreakOnAction();
+                        showCongratsModal(`Parabéns, ${label} Concluído!`);
                     } else {
                         dayCard.classList.remove("is-done");
                         if (navLink) navLink.classList.remove("done-nav");
@@ -3624,6 +3870,11 @@
                     updateProgress();
                 });
             });
+
+            // Inicializa barras de progresso para todos os dias
+            for(let i=1; i<=21; i++) {
+                updateDayProgress('d' + i);
+            }
 
             renderHistory();
             updateProgress();
@@ -3648,7 +3899,7 @@
             if (percent === 100 && !localStorage.getItem("bb_cycle_finished_logged")) {
                 addHistoryEntry(`🎉 CICLO ${cycleCount} 100% CONCLUÍDO!`);
                 localStorage.setItem("bb_cycle_finished_logged", "true");
-                showCongratsModal();
+                showCongratsModal(`Parabéns, Ciclo ${cycleCount} Concluído!`);
             } else if (percent < 100) {
                 localStorage.removeItem("bb_cycle_finished_logged");
             }
