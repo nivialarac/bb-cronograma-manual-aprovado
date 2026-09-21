@@ -3041,11 +3041,56 @@
 
         </div>
     </div>
-
+    
     <!-- SCRIPT DA APLICAÇÃO -->
-    <script>
-        const VALID_USER = "estudante";
-        const VALID_PASS = "1234";
+    <script type="module">
+        // 1. IMPORTAR OS MÓDULOS DO FIREBASE
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+        // 2. O SEU FIREBASE CONFIG (O bilhete de identidade do seu projeto)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC3y01o2AXgHX7uFZHGXcgp9lhmaj-k1jM",
+            authDomain: "manual-do-aprovado.firebaseapp.com",
+            projectId: "manual-do-aprovado",
+            storageBucket: "manual-do-aprovado.firebasestorage.app",
+            messagingSenderId: "670600924430",
+            appId: "1:670600924430:web:dde0854ba164953acadb5f",
+            measurementId: "G-2CMMEPWVF2"
+        };
+
+        // 3. INICIALIZAR O FIREBASE
+        const app = initializeApp(firebaseConfig);
+        window.firebaseAuth = getAuth(app);
+        window.firebaseDb = getFirestore(app);
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signOut = signOut;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+
+        // Variável para guardar o ID de quem entrou
+        window.usuarioLogadoUid = null;
+
+        // Mantém as frases que já lá estavam
+        const motivationalPhrases = [
+            "“O sucesso é a soma de pequenos esforços repetidos dia após dia.” – Robert Collier",
+            "“A persistência é o menor caminho para o êxito.” – Charles Chaplin",
+            "“O conhecimento não é aquilo que você sabe, mas o que você faz com aquilo que sabe.” – Aldous Huxley",
+            "“Não espere por uma oportunidade, crie-a.” – George Bernard Shaw",
+            "“A aprovação é a certeza de que todo o seu sacrifício valeu a pena. Continue firme e conquiste sua vaga!”"
+        ];
+
+        window.addEventListener("DOMContentLoaded", function() {
+            initTheme();
+            checkAuth(); 
+            populateCustomHourSelect();
+            initAllTags();
+        });
+        
+        // ... Daqui para baixo, deixe o código exatamente como estava (populateCustomHourSelect, etc.)
 
         const motivationalPhrases = [
             "“O sucesso é a soma de pequenos esforços repetidos dia após dia.” – Robert Collier",
