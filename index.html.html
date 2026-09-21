@@ -3957,37 +3957,97 @@
             dashLog.innerHTML = html;
         }
 
-        /* --- AUTENTICAÇÃO --- */
+  /* --- NOVA AUTENTICAÇÃO COM FIREBASE --- */
         function checkAuth() {
-            const sessionActive = localStorage.getItem("bb_session_active");
-            if (sessionActive === "true") {
-                document.getElementById("loginModal").style.display = "none";
-                document.getElementById("appContent").style.display = "block";
-                initApp();
-            } else {
-                document.getElementById("loginModal").style.display = "flex";
-                document.getElementById("appContent").style.display = "none";
-            }
+            window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                if (user) {
+                    // Usuário entrou!
+                    window.usuarioLogadoUid = user.uid;
+                    document.getElementById("loginModal").style.display = "none";
+                    document.getElementById("appContent").style.display = "block";
+                    carregarDadosDaNuvem(); // Baixa os dados antes de montar a tela
+                } else {
+                    // Ninguém logado
+                    window.usuarioLogadoUid = null;
+                    document.getElementById("loginModal").style.display = "flex";
+                    document.getElementById("appContent").style.display = "none";
+                }
+            });
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
-            const u = document.getElementById("username").value.trim().toLowerCase();
+            // Importante: No input de "username" agora você deve digitar o E-MAIL
+            const u = document.getElementById("username").value.trim(); 
             const p = document.getElementById("password").value.trim();
             const errorMsg = document.getElementById("loginError");
 
-            if ((u === VALID_USER || u === "lara") && (p === VALID_PASS || p === "1234")) {
-                localStorage.setItem("bb_session_active", "true");
+            try {
+                await window.signInWithEmailAndPassword(window.firebaseAuth, u, p);
                 errorMsg.style.display = "none";
-                checkAuth();
-            } else {
+            } catch (error) {
+                console.error("Erro no login:", error);
                 errorMsg.style.display = "block";
+                errorMsg.innerText = "E-mail ou senha incorretos!";
             }
         }
 
-        function logout() {
-            localStorage.removeItem("bb_session_active");
-            location.reload();
+        async function logout() {
+            try {
+                await window.signOut(window.firebaseAuth);
+                // A tela de login volta automaticamente pelo onAuthStateChanged
+            } catch (error) {
+                console.error("Erro ao sair:", error);
+            }
+        }
+
+        /* --- SINCRONIZAÇÃO COM A NUVEM (FIRESTORE) --- */
+        async function salvarDadosNaNuvem() {
+            if (!window.usuarioLogadoUid) return;
+
+            let dadosLocais = {};
+            // Pega tudo do seu progresso local
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if(key.startsWith("bb_")) {
+                    dadosLocais[key] = localStorage.getItem(key);
+                }
+            }
+
+            try {
+                // Envia para o banco de dados
+                await window.setDoc(window.doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid), {
+                    progresso: dadosLocais,
+                    ultimaAtualizacao: new Date().toISOString()
+                }, { merge: true });
+            } catch (error) {
+                console.error("Erro ao salvar na nuvem:", error);
+            }
+        }
+
+        async function carregarDadosDaNuvem() {
+            if (!window.usuarioLogadoUid) return;
+            try {
+                const docSnap = await window.getDoc(window.doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid));
+                if (docSnap.exists()) {
+                    const dados = docSnap.data().progresso;
+                    if (dados) {
+                        for (const [key, value] of Object.entries(dados)) {
+                            localStorage.setItem(key, value);
+                        }
+                    }
+                }
+                initApp(); // Inicia a interface visual com os dados atualizados
+            } catch (error) {
+                console.error("Erro ao carregar dados:", error);
+                initApp(); 
+            }
+        }
+
+        // Função ajudante que salva localmente e já manda pra nuvem
+        function salvarItem(chave, valor) {
+            localStorage.setItem(chave, valor);
+            salvarDadosNaNuvem();
         }
 
         /* --- OFENSIVA (STREAK) --- */
