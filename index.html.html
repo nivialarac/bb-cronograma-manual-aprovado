@@ -3060,7 +3060,7 @@
             measurementId: "G-2CMMEPWVF2"
         };
 
-        // 3. INICIALIZAR O FIREBASE
+        // 3. INICIALIZAR O FIREBASE E DISPONIBILIZAR PARA AS FUNÇÕES GLOBAIS
         const app = initializeApp(firebaseConfig);
         window.firebaseAuth = getAuth(app);
         window.firebaseDb = getFirestore(app);
@@ -3089,23 +3089,98 @@
             populateCustomHourSelect();
             initAllTags();
         });
-        
-        // ... Daqui para baixo, deixe o código exatamente como estava (populateCustomHourSelect, etc.)
 
-        const motivationalPhrases = [
-            "“O sucesso é a soma de pequenos esforços repetidos dia após dia.” – Robert Collier",
-            "“A persistência é o menor caminho para o êxito.” – Charles Chaplin",
-            "“O conhecimento não é aquilo que você sabe, mas o que você faz com aquilo que sabe.” – Aldous Huxley",
-            "“Não espere por uma oportunidade, crie-a.” – George Bernard Shaw",
-            "“A aprovação é a certeza de que todo o seu sacrifício valeu a pena. Continue firme e conquiste sua vaga!”"
-        ];
+        /* --- NOVA AUTENTICAÇÃO COM FIREBASE --- */
+        function checkAuth() {
+            window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                if (user) {
+                    window.usuarioLogadoUid = user.uid;
+                    document.getElementById("loginModal").style.display = "none";
+                    document.getElementById("appContent").style.display = "block";
+                    carregarDadosDaNuvem(); 
+                } else {
+                    window.usuarioLogadoUid = null;
+                    document.getElementById("loginModal").style.display = "flex";
+                    document.getElementById("appContent").style.display = "none";
+                }
+            });
+        }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            initTheme();
-            checkAuth();
-            populateCustomHourSelect();
-            initAllTags();
-        });
+        async function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById("username").value.trim(); 
+            const p = document.getElementById("password").value.trim();
+            const errorMsg = document.getElementById("loginError");
+
+            try {
+                await window.signInWithEmailAndPassword(window.firebaseAuth, u, p);
+                errorMsg.style.display = "none";
+            } catch (error) {
+                console.error("Erro no login:", error);
+                errorMsg.style.display = "block";
+                errorMsg.innerText = "E-mail ou senha incorretos!";
+            }
+        }
+
+        async function logout() {
+            try {
+                await window.signOut(window.firebaseAuth);
+            } catch (error) {
+                console.error("Erro ao sair:", error);
+            }
+        }
+
+        // Ponte para o HTML
+        window.handleLogin = handleLogin;
+        window.logout = logout;
+
+        /* --- SINCRONIZAÇÃO COM A NUVEM (FIRESTORE) --- */
+        async function salvarDadosNaNuvem() {
+            if (!window.usuarioLogadoUid) return;
+
+            let dadosLocais = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if(key.startsWith("bb_")) {
+                    dadosLocais[key] = localStorage.getItem(key);
+                }
+            }
+
+            try {
+                await window.setDoc(window.doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid), {
+                    progresso: dadosLocais,
+                    ultimaAtualizacao: new Date().toISOString()
+                }, { merge: true });
+            } catch (error) {
+                console.error("Erro ao salvar na nuvem:", error);
+            }
+        }
+
+        async function carregarDadosDaNuvem() {
+            if (!window.usuarioLogadoUid) return;
+            try {
+                const docSnap = await window.getDoc(window.doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid));
+                if (docSnap.exists()) {
+                    const dados = docSnap.data().progresso;
+                    if (dados) {
+                        for (const [key, value] of Object.entries(dados)) {
+                            localStorage.setItem(key, value);
+                        }
+                    }
+                }
+                initApp(); 
+            } catch (error) {
+                console.error("Erro ao carregar dados:", error);
+                initApp(); 
+            }
+        }
+
+        function salvarItem(chave, valor) {
+            localStorage.setItem(chave, valor);
+            salvarDadosNaNuvem();
+        }
+
+        /* --- RESTO DO CÓDIGO ORIGINAL --- */
 
         /* --- POPULAR SELECT DO PERSONALIZADOR DE CARGA --- */
         function populateCustomHourSelect() {
@@ -3118,6 +3193,39 @@
             select.innerHTML = html;
         }
 
+        // --- ATENÇÃO: As funções abaixo agora usam salvarItem no lugar de localStorage.setItem ---
+
+        // Torna essas funções globais para o HTML conseguir chamá-las
+        window.saveCustomDayHour = saveCustomDayHour;
+        window.addDayTag = addDayTag;
+        window.removeDayTag = removeDayTag;
+        window.setTheme = setTheme;
+        window.toggleWeek = toggleWeek;
+        window.filterTopics = filterTopics;
+        window.openPomodoro = openPomodoro;
+        window.closePomodoro = closePomodoro;
+        window.applyCustomPomodoro = applyCustomPomodoro;
+        window.togglePomodoro = togglePomodoro;
+        window.resetPomodoro = resetPomodoro;
+        window.togglePending = togglePending;
+        window.toggleMicroTopic = toggleMicroTopic;
+        window.addDetailedSimulatedScore = addDetailedSimulatedScore;
+        window.deleteSimulatedScore = deleteSimulatedScore;
+        window.downloadGraphicalPDFReport = downloadGraphicalPDFReport;
+        window.downloadSimulationsPDFReport = downloadSimulationsPDFReport;
+        window.exportData = exportData;
+        window.importData = importData;
+        window.closeCongrats = closeCongrats;
+        window.openSettings = openSettings;
+        window.closeSettings = closeSettings;
+        window.openDashboard = openDashboard;
+        window.closeDashboard = closeDashboard;
+        window.resetStreak = resetStreak;
+        window.deleteHistoryItem = deleteHistoryItem;
+        window.clearHistory = clearHistory;
+        window.resetProgress = resetProgress;
+
+
         function saveCustomDayHour() {
             const dayKey = document.getElementById("customHourDaySelect").value;
             const hourText = document.getElementById("customHourInput").value.trim();
@@ -3125,7 +3233,7 @@
                 alert("Por favor, informe a nova carga horária.");
                 return;
             }
-            localStorage.setItem("bb_carga_" + dayKey, hourText);
+            salvarItem("bb_carga_" + dayKey, hourText); // Modificado
             
             const card = document.getElementById('dia' + dayKey.replace('d', ''));
             if (card) {
@@ -3149,7 +3257,7 @@
 
             let tags = JSON.parse(localStorage.getItem(`bb_tags_${dayId}`) || "[]");
             tags.push(val);
-            localStorage.setItem(`bb_tags_${dayId}`, JSON.stringify(tags));
+            salvarItem(`bb_tags_${dayId}`, JSON.stringify(tags)); // Modificado
 
             input.value = "";
             renderDayTags(dayId);
@@ -3159,7 +3267,7 @@
         function removeDayTag(dayId, index) {
             let tags = JSON.parse(localStorage.getItem(`bb_tags_${dayId}`) || "[]");
             tags.splice(index, 1);
-            localStorage.setItem(`bb_tags_${dayId}`, JSON.stringify(tags));
+            salvarItem(`bb_tags_${dayId}`, JSON.stringify(tags)); // Modificado
             renderDayTags(dayId);
         }
 
@@ -3208,7 +3316,7 @@
             }
 
             if (save) {
-                localStorage.setItem("bb_theme", mode);
+                salvarItem("bb_theme", mode); // Modificado
             }
         }
 
@@ -3247,13 +3355,6 @@
         }
 
         /* --- POMODORO TIMER APORIMORADO (FOCO & PAUSA EM TEMPO REAL) --- */
-        let pomodoroInterval = null;
-        let currentFocusMins = 25;
-        let currentBreakMins = 5;
-        let pomodoroTimeLeft = 25 * 60;
-        let isPomodoroRunning = false;
-        let isFocusMode = true;
-
         function openPomodoro() {
             document.getElementById("pomodoroModal").style.display = "flex";
         }
@@ -3271,12 +3372,12 @@
                 alert("Por favor, insira tempos válidos (Foco: 1-240m, Pausa: 1-60m).");
                 return;
             }
-            currentFocusMins = fMins;
-            currentBreakMins = bMins;
-            clearInterval(pomodoroInterval);
-            isPomodoroRunning = false;
-            isFocusMode = true;
-            pomodoroTimeLeft = fMins * 60;
+            window.currentFocusMins = fMins;
+            window.currentBreakMins = bMins;
+            clearInterval(window.pomodoroInterval);
+            window.isPomodoroRunning = false;
+            window.isFocusMode = true;
+            window.pomodoroTimeLeft = fMins * 60;
             updatePomodoroDisplay();
             document.getElementById("pomodoroStartBtn").innerText = "Iniciar";
             document.getElementById("pomodoroStatus").innerText = "🎯 Foco Total nos Estudos!";
@@ -3286,33 +3387,33 @@
             const btn = document.getElementById("pomodoroStartBtn");
             const statusEl = document.getElementById("pomodoroStatus");
             
-            if (isPomodoroRunning) {
-                clearInterval(pomodoroInterval);
-                isPomodoroRunning = false;
+            if (window.isPomodoroRunning) {
+                clearInterval(window.pomodoroInterval);
+                window.isPomodoroRunning = false;
                 btn.innerText = "Continuar";
             } else {
-                isPomodoroRunning = true;
+                window.isPomodoroRunning = true;
                 btn.innerText = "Pausar";
-                pomodoroInterval = setInterval(() => {
-                    if (pomodoroTimeLeft > 0) {
-                        pomodoroTimeLeft--;
+                window.pomodoroInterval = setInterval(() => {
+                    if (window.pomodoroTimeLeft > 0) {
+                        window.pomodoroTimeLeft--;
                         updatePomodoroDisplay();
                     } else {
-                        clearInterval(pomodoroInterval);
-                        isPomodoroRunning = false;
+                        clearInterval(window.pomodoroInterval);
+                        window.isPomodoroRunning = false;
                         
-                        if (isFocusMode) {
-                            addHistoryEntry(`Sessão Pomodoro de Foco concluída (${currentFocusMins} min)`);
-                            alert(`🎉 Foco concluído! Hora de uma pausa de ${currentBreakMins} minutos.`);
-                            isFocusMode = false;
-                            pomodoroTimeLeft = currentBreakMins * 60;
+                        if (window.isFocusMode) {
+                            addHistoryEntry(`Sessão Pomodoro de Foco concluída (${window.currentFocusMins} min)`);
+                            alert(`🎉 Foco concluído! Hora de uma pausa de ${window.currentBreakMins} minutos.`);
+                            window.isFocusMode = false;
+                            window.pomodoroTimeLeft = window.currentBreakMins * 60;
                             statusEl.innerText = "☕ Hora do Descanso / Pausa";
                             btn.innerText = "Iniciar Pausa";
                         } else {
-                            addHistoryEntry(`Intervalo de Pausa concluído (${currentBreakMins} min)`);
+                            addHistoryEntry(`Intervalo de Pausa concluído (${window.currentBreakMins} min)`);
                             alert(`🔔 Pausa concluída! Retornando ao foco nos estudos.`);
-                            isFocusMode = true;
-                            pomodoroTimeLeft = currentFocusMins * 60;
+                            window.isFocusMode = true;
+                            window.pomodoroTimeLeft = window.currentFocusMins * 60;
                             statusEl.innerText = "🎯 Foco Total nos Estudos!";
                             btn.innerText = "Iniciar Foco";
                         }
@@ -3323,18 +3424,18 @@
         }
 
         function resetPomodoro() {
-            clearInterval(pomodoroInterval);
-            isPomodoroRunning = false;
-            isFocusMode = true;
-            pomodoroTimeLeft = currentFocusMins * 60;
+            clearInterval(window.pomodoroInterval);
+            window.isPomodoroRunning = false;
+            window.isFocusMode = true;
+            window.pomodoroTimeLeft = window.currentFocusMins ? window.currentFocusMins * 60 : 25 * 60;
             updatePomodoroDisplay();
             document.getElementById("pomodoroStartBtn").innerText = "Iniciar";
             document.getElementById("pomodoroStatus").innerText = "🎯 Foco Total nos Estudos!";
         }
 
         function updatePomodoroDisplay() {
-            const minutes = Math.floor(pomodoroTimeLeft / 60);
-            const seconds = pomodoroTimeLeft % 60;
+            const minutes = Math.floor(window.pomodoroTimeLeft / 60);
+            const seconds = window.pomodoroTimeLeft % 60;
             document.getElementById("pomodoroTimer").innerText = 
                 `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
@@ -3355,7 +3456,7 @@
                     navLink.classList.remove("done-nav");
                     navLink.classList.add("pending-nav");
                 }
-                localStorage.setItem("bb_pending_" + dayId, "true");
+                salvarItem("bb_pending_" + dayId, "true"); // Modificado
                 addHistoryEntry(`Marcado como Pendente: ${dayLabel}`);
             } else {
                 card.classList.remove("is-pending");
@@ -3363,6 +3464,7 @@
                 btn.style.color = "";
                 if (navLink) navLink.classList.remove("pending-nav");
                 localStorage.removeItem("bb_pending_" + dayId);
+                salvarDadosNaNuvem(); // Modificado
                 addHistoryEntry(`Removido status pendente: ${dayLabel}`);
             }
         }
@@ -3374,12 +3476,13 @@
             if (!chk) return;
             if (chk.checked) {
                 if (lbl) lbl.classList.add("checked");
-                localStorage.setItem("bb_micro_" + microId, "true");
+                salvarItem("bb_micro_" + microId, "true"); // Modificado
                 addHistoryEntry(`Estudado sub-tópico: ${labelName}`);
                 updateDashboardStats();
             } else {
                 if (lbl) lbl.classList.remove("checked");
                 localStorage.removeItem("bb_micro_" + microId);
+                salvarDadosNaNuvem(); // Modificado
                 addHistoryEntry(`Desmarcado sub-tópico: ${labelName}`);
                 updateDashboardStats();
             }
@@ -3476,7 +3579,7 @@
             };
 
             sims.push(newSim);
-            localStorage.setItem("bb_detailed_simulations", JSON.stringify(sims));
+            salvarItem("bb_detailed_simulations", JSON.stringify(sims)); // Modificado
 
             nameInput.value = "";
             correctInput.value = "";
@@ -3494,7 +3597,7 @@
             if (confirm("Deseja excluir este registro de simulado?")) {
                 let sims = JSON.parse(localStorage.getItem("bb_detailed_simulations") || "[]");
                 sims = sims.filter(s => s.id !== id);
-                localStorage.setItem("bb_detailed_simulations", JSON.stringify(sims));
+                salvarItem("bb_detailed_simulations", JSON.stringify(sims)); // Modificado
                 renderSimulatedChartAndList();
                 addHistoryEntry("Registro de simulado excluído");
             }
@@ -3567,7 +3670,7 @@
             listContainer.innerHTML = listHtml;
         }
 
-        /* --- GERADOR DE RELATÓRIO GRÁFICO EM PDF (CORRIGIDO PARA O HISTÓRICO) --- */
+        /* --- GERADOR DE RELATÓRIO GRÁFICO EM PDF --- */
         function downloadGraphicalPDFReport() {
             const history = JSON.parse(localStorage.getItem("bb_history_log") || "[]");
             const days = document.querySelectorAll('.day-checkbox');
@@ -3786,7 +3889,7 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     for (const key in data) {
-                        localStorage.setItem(key, data[key]);
+                        salvarItem(key, data[key]); // Modificado
                     }
                     alert("Dados importados com sucesso! A página será recarregada.");
                     location.reload();
@@ -3957,163 +4060,6 @@
             dashLog.innerHTML = html;
         }
 
-  /* --- NOVA AUTENTICAÇÃO COM FIREBASE --- */
-        function checkAuth() {
-            window.onAuthStateChanged(window.firebaseAuth, (user) => {
-                if (user) {
-                    // Usuário entrou!
-                    window.usuarioLogadoUid = user.uid;
-                    document.getElementById("loginModal").style.display = "none";
-                    document.getElementById("appContent").style.display = "block";
-                    carregarDadosDaNuvem(); // Baixa os dados antes de montar a tela
-                } else {
-                    // Ninguém logado
-                    window.usuarioLogadoUid = null;
-                    document.getElementById("loginModal").style.display = "flex";
-                    document.getElementById("appContent").style.display = "none";
-                }
-            });
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            // Importante: No input de "username" agora você deve digitar o E-MAIL
-            const u = document.getElementById("username").value.trim(); 
-            const p = document.getElementById("password").value.trim();
-            const errorMsg = document.getElementById("loginError");
-
-            try {
-                await window.signInWithEmailAndPassword(window.firebaseAuth, u, p);
-                errorMsg.style.display = "none";
-            } catch (error) {
-                console.error("Erro no login:", error);
-                errorMsg.style.display = "block";
-                errorMsg.innerText = "E-mail ou senha incorretos!";
-            }
-        }
-
-        async function logout() {
-            try {
-                await window.signOut(window.firebaseAuth);
-                // A tela de login volta automaticamente pelo onAuthStateChanged
-            } catch (error) {
-                console.error("Erro ao sair:", error);
-            }
-        }
-
-        /* --- SINCRONIZAÇÃO COM A NUVEM (FIRESTORE) --- */
-        async function salvarDadosNaNuvem() {
-            if (!window.usuarioLogadoUid) return;
-
-            let dadosLocais = {};
-            // Pega tudo do seu progresso local
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if(key.startsWith("bb_")) {
-                    dadosLocais[key] = localStorage.getItem(key);
-                }
-            }
-
-            try {
-                // Envia para o banco de dados
-                await window.setDoc(window.doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid), {
-                    progresso: dadosLocais,
-                    ultimaAtualizacao: new Date().toISOString()
-                }, { merge: true });
-            } catch (error) {
-                console.error("Erro ao salvar na nuvem:", error);
-            }
-        }
-
-        async function carregarDadosDaNuvem() {
-            if (!window.usuarioLogadoUid) return;
-            try {
-                const docSnap = await window.getDoc(window.doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid));
-                if (docSnap.exists()) {
-                    const dados = docSnap.data().progresso;
-                    if (dados) {
-                        for (const [key, value] of Object.entries(dados)) {
-                            localStorage.setItem(key, value);
-                        }
-                    }
-                }
-                initApp(); // Inicia a interface visual com os dados atualizados
-            } catch (error) {
-                console.error("Erro ao carregar dados:", error);
-                initApp(); 
-            }
-        }
-
-        // Função ajudante que salva localmente e já manda pra nuvem
-        function salvarItem(chave, valor) {
-            localStorage.setItem(chave, valor);
-            salvarDadosNaNuvem();
-        }
-
-        /* --- OFENSIVA (STREAK) --- */
-        function checkStreak() {
-            let streak = parseInt(localStorage.getItem('bb_streak') || '0');
-            const lastDate = localStorage.getItem('bb_last_activity');
-            const today = new Date().toLocaleDateString('pt-BR');
-
-            if (lastDate) {
-                const [d1, m1, y1] = lastDate.split('/');
-                const lastD = new Date(y1, m1 - 1, d1);
-                const [d2, m2, y2] = today.split('/');
-                const currD = new Date(y2, m2 - 1, d2);
-                
-                const diffTime = currD - lastD;
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
-                
-                if (diffDays > 1) {
-                    streak = 0;
-                    localStorage.setItem('bb_streak', streak);
-                }
-            }
-            const el = document.getElementById('streak-count');
-            if(el) el.innerText = streak + (streak === 1 ? " dia" : " dias");
-        }
-
-        function updateStreakOnAction() {
-            let streak = parseInt(localStorage.getItem('bb_streak') || '0');
-            const lastDate = localStorage.getItem('bb_last_activity');
-            const today = new Date().toLocaleDateString('pt-BR');
-            
-            if (lastDate !== today) {
-                if (!lastDate) {
-                    streak = 1;
-                } else {
-                    const [d1, m1, y1] = lastDate.split('/');
-                    const lastD = new Date(y1, m1 - 1, d1);
-                    const [d2, m2, y2] = today.split('/');
-                    const currD = new Date(y2, m2 - 1, d2);
-                    
-                    const diffTime = currD - lastD;
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
-                    
-                    if (diffDays === 1) {
-                        streak += 1;
-                    } else if (diffDays > 1) {
-                        streak = 1;
-                    }
-                }
-                localStorage.setItem('bb_last_activity', today);
-                localStorage.setItem('bb_streak', streak);
-                const el = document.getElementById('streak-count');
-                if(el) el.innerText = streak + (streak === 1 ? " dia" : " dias");
-            }
-        }
-
-        function resetStreak() {
-            if (confirm("Tem certeza que deseja zerar a sua ofensiva (streak) de dias seguidos?")) {
-                localStorage.setItem('bb_streak', '0');
-                localStorage.removeItem('bb_last_activity');
-                checkStreak();
-                addHistoryEntry("🔄 Ofensiva de estudos reiniciada para 0 dias");
-                alert("Ofensiva zerada com sucesso!");
-            }
-        }
-
         function getFormattedDateTime() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('pt-BR');
@@ -4128,7 +4074,7 @@
                 timestamp: getFormattedDateTime()
             };
             history.unshift(entry);
-            localStorage.setItem("bb_history_log", JSON.stringify(history));
+            salvarItem("bb_history_log", JSON.stringify(history)); // Modificado
             renderHistory();
         }
 
@@ -4162,7 +4108,7 @@
             if (confirm("Deseja excluir o registro?")) {
                 let history = JSON.parse(localStorage.getItem("bb_history_log") || "[]");
                 history.splice(index, 1);
-                localStorage.setItem("bb_history_log", JSON.stringify(history));
+                salvarItem("bb_history_log", JSON.stringify(history)); // Modificado
                 renderHistory();
             }
         }
@@ -4170,7 +4116,7 @@
         function clearHistory() {
             if (confirm("Tem certeza que deseja apagar todo o histórico de atividades e zerar o progresso do ciclo atual?")) {
                 localStorage.removeItem("bb_history_log");
-                localStorage.setItem('bb_cycle_count', '1');
+                salvarItem('bb_cycle_count', '1'); // Modificado
                 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
@@ -4178,6 +4124,7 @@
                         localStorage.removeItem(key);
                     }
                 }
+                salvarDadosNaNuvem(); // Força sincronização após a limpeza
                 
                 addHistoryEntry("🔄 Iniciado Ciclo de Estudos (Ciclo 1)");
                 alert("Histórico e progresso zerados com sucesso!");
@@ -4195,7 +4142,7 @@
                     text: "🔄 Iniciado Ciclo de Estudos (Ciclo 1)",
                     timestamp: getFormattedDateTime()
                 });
-                localStorage.setItem("bb_history_log", JSON.stringify(history));
+                salvarItem("bb_history_log", JSON.stringify(history)); // Modificado
             }
 
             for (let i = 1; i <= 21; i++) {
@@ -4259,14 +4206,14 @@
                         btn.classList.remove("todo");
                         btn.classList.add("done");
                         btn.innerText = "✓ ESTUDADO";
-                        localStorage.setItem(btn.id, "done");
+                        salvarItem(btn.id, "done"); // Modificado
                         addHistoryEntry(`Conteúdo Estudado: ${title}`);
                         updateStreakOnAction();
                     } else {
                         btn.classList.remove("done");
                         btn.classList.add("todo");
                         btn.innerText = "[ A FAZER ]";
-                        localStorage.setItem(btn.id, "todo");
+                        salvarItem(btn.id, "todo"); // Modificado
                         addHistoryEntry(`Conteúdo desmarcado: ${title}`);
                     }
                     const card = btn.closest('.day-card');
@@ -4284,7 +4231,7 @@
                 }
 
                 chk.addEventListener("change", function() {
-                    localStorage.setItem(chk.id, chk.checked);
+                    salvarItem(chk.id, chk.checked); // Modificado
                     if (chk.checked) {
                         chk.parentElement.classList.add("checked");
                     } else {
@@ -4326,7 +4273,7 @@
                 }
 
                 chk.addEventListener("change", function() {
-                    localStorage.setItem(chk.id, chk.checked);
+                    salvarItem(chk.id, chk.checked); // Modificado
                     if (chk.checked) {
                         dayCard.classList.add("is-done");
                         if (navLink) navLink.classList.add("done-nav");
@@ -4368,10 +4315,11 @@
 
             if (percent === 100 && !localStorage.getItem("bb_cycle_finished_logged")) {
                 addHistoryEntry(`🎉 CICLO ${cycleCount} 100% CONCLUÍDO!`);
-                localStorage.setItem("bb_cycle_finished_logged", "true");
+                salvarItem("bb_cycle_finished_logged", "true"); // Modificado
                 showCongratsModal(`Parabéns, Ciclo ${cycleCount} Concluído!`);
             } else if (percent < 100) {
                 localStorage.removeItem("bb_cycle_finished_logged");
+                salvarDadosNaNuvem(); // Sincroniza a remoção do log
             }
         }
 
@@ -4379,7 +4327,7 @@
             if (confirm("Tem certeza que deseja começar um novo ciclo? As marcações dos dias e matérias serão resetadas e o ciclo voltará para o Ciclo 1 (seu histórico e ofensiva serão mantidos).")) {
                 let currentCycle = parseInt(localStorage.getItem('bb_cycle_count') || '1');
                 let nextCycle = currentCycle + 1;
-                localStorage.setItem('bb_cycle_count', nextCycle);
+                salvarItem('bb_cycle_count', nextCycle); // Modificado
                 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
@@ -4387,6 +4335,7 @@
                         localStorage.removeItem(key);
                     }
                 }
+                salvarDadosNaNuvem(); // Força a sincronização da limpeza
                 addHistoryEntry(`🔄 Iniciado Ciclo de Estudos (Ciclo ${nextCycle})`);
                 location.reload();
             }
