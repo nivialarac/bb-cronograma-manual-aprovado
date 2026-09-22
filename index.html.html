@@ -74,7 +74,7 @@
         .progress-bar-bg { flex: 1; min-width: 200px; height: 14px; background-color: var(--border); border-radius: 10px; overflow: hidden; border: 1px solid rgba(2, 132, 199, 0.15); }
         .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--primary)); border-radius: 10px; transition: width 0.4s; }
         
-        /* BOTÕES UNIFICADOS (CORREÇÃO DE DESIGN) */
+        /* BOTÕES UNIFICADOS */
         .header-btn-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .header-btn { background-color: var(--info-bg); color: var(--primary); border: 1px solid var(--card-border); width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s; box-shadow: var(--box-shadow); }
         .header-btn:hover { background-color: var(--primary); color: white; transform: scale(1.1); box-shadow: 0 0 15px rgba(2, 132, 199, 0.4); }
@@ -111,7 +111,7 @@
         .cert-days { font-size: 5rem; font-weight: 800; color: #38bdf8; text-shadow: 0 4px 15px rgba(0,0,0,0.5); line-height: 1; margin-bottom: 10px; }
         .cert-footer { margin-top: auto; font-size: 0.9rem; opacity: 0.8; font-style: italic; }
 
-        /* EFEITOS DE HOVER CORRIGIDOS (INTERAÇÃO RESTAURADA) */
+        /* ESTILOS DE CORPO E COMPONENTES */
         .search-bar-container { margin-bottom: 25px; background: var(--card-bg); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--card-border); display: flex; gap: 12px; align-items: center; box-shadow: var(--box-shadow); }
         .search-bar-container input { flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--info-bg); color: var(--text); }
         
@@ -274,12 +274,12 @@
         </div>
     </div>
 
-    <!-- MODAL DE OFENSIVAS E METAS -->
+    <!-- MODAL DE OFENSIVAS E METAS CORRIGIDO -->
     <div class="settings-overlay" id="metasModal">
         <div class="settings-card">
             <div class="settings-header"><h2>🎯 Ofensivas & Metas</h2><button class="btn-close-settings" onclick="closeModal('metasModal')">✕</button></div>
             <div style="background: var(--info-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--primary); margin-bottom: 20px; text-align: center;">
-                <h3 style="color: var(--primary); font-size: 1rem; margin-bottom: 5px;">🔥 Ofensiva Atual: <span id="metasCurrentStreak" style="font-size: 1.5rem;">0</span> dias</h3>
+                <h3 style="color: var(--primary); font-size: 1rem; margin-bottom: 5px;">🔥 Ofensiva Atual: <span id="metasCurrentStreak" style="font-size: 1.5rem;">0</span> <span id="metasCurrentStreakLabel">dias</span></h3>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px;">
                     <label style="font-size: 0.85rem; font-weight: 600;">Definir Meta (Dias):</label>
                     <input type="number" id="customGoalInput" placeholder="Ex: 30" style="width: 70px; padding: 5px; border-radius: 5px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text);">
@@ -449,7 +449,7 @@
             <div class="progress-container">
                 <div class="progress-info" id="progress-text">Progresso do Ciclo: 0 / 21 dias (0%)</div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
-                <!-- BOTOES DO HEADER UNIFICADOS (CORRIGIDO) -->
+                <!-- BOTOES DO HEADER UNIFICADOS -->
                 <div class="header-btn-group">
                     <button class="header-btn" onclick="openModal('profileModal')" title="Meu Perfil">👤</button>
                     <button class="header-btn" onclick="abrirRanking()" title="Ranking Global">🏆</button>
@@ -546,10 +546,15 @@
         const METAS_PADRAO = [15, 30, 50, 100, 150, 200];
         window.currentMilestoneReached = 0;
 
-        // FUNÇÃO SEGURA DE PARSE JSON
+        // FUNÇÃO SEGURA DE PARSE JSON E VALIDAÇÃO DE CHAVES
         window.safeJSONParse = function(key, defaultVal) {
             try { const item = localStorage.getItem(key); return item ? JSON.parse(item) : defaultVal; } 
             catch (e) { return defaultVal; }
+        }
+        
+        window.isAppKey = function(key) {
+            if (!key) return false;
+            return key.startsWith("bb_") || key.startsWith("chk-") || key.startsWith("done-") || key.startsWith("status-");
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -557,7 +562,6 @@
             initScrollTopLogic();
             checkAuth();
 
-            // LOGIN SEGURO VIA EVENT LISTENER
             const loginForm = document.getElementById("loginForm");
             if(loginForm) {
                 loginForm.addEventListener("submit", async function(e) {
@@ -609,14 +613,12 @@
                     const appContent = document.getElementById("appContent");
                     if (appContent) appContent.style.display = "none";
 
-                    // Limpa o formulário caso seja uma nova tentativa de acesso
                     const frm = document.getElementById("loginForm");
                     if(frm) frm.reset();
                 }
             });
         }
 
-        // COMANDO DE SAIR - FORÇA O REFRESH PARA A TELA VOLTAR VAZIA
         window.logout = async function() { 
             try { 
                 await signOut(window.firebaseAuth); 
@@ -639,9 +641,12 @@
         async function salvarDadosNaNuvem() {
             if (!window.usuarioLogadoUid) return;
             let dadosLocais = {};
+            // CORREÇÃO DE SINCRONIZAÇÃO AQUI
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i); 
-                if(key && key.startsWith("bb_")) dadosLocais[key] = localStorage.getItem(key);
+                if(window.isAppKey(key)) {
+                    dadosLocais[key] = localStorage.getItem(key);
+                }
             }
             try {
                 await setDoc(doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid), { 
@@ -675,7 +680,7 @@
 
         function salvarItem(chave, valor) { localStorage.setItem(chave, valor); salvarDadosNaNuvem(); }
 
-        /* ======== OFENSIVA CORRIGIDA ======== */
+        /* ======== OFENSIVA ======== */
         function checkStreak() {
             const lastActivity = localStorage.getItem("bb_last_activity");
             let streak = parseInt(localStorage.getItem("bb_streak") || "0");
@@ -686,7 +691,7 @@
                 const diffDays = Math.round((currentDate - lastDate) / 86400000);
                 if (diffDays > 1) { streak = 0; salvarItem("bb_streak", "0"); }
             }
-            document.getElementById("streak-count").innerText = `${streak} dias`;
+            document.getElementById("streak-count").innerText = `${streak} ${streak === 1 ? 'dia' : 'dias'}`;
         }
 
         function updateStreakOnAction() {
@@ -707,7 +712,7 @@
 
             salvarItem("bb_last_activity", todayStr); 
             salvarItem("bb_streak", streak);
-            document.getElementById("streak-count").innerText = `${streak} dias`;
+            document.getElementById("streak-count").innerText = `${streak} ${streak === 1 ? 'dia' : 'dias'}`;
             verificarMetasDeOfensiva(streak);
         }
 
@@ -720,7 +725,7 @@
                 reached.push({ day: streakAtual, date: new Date().toLocaleDateString('pt-BR') });
                 salvarItem("bb_milestones", JSON.stringify(reached));
                 window.currentMilestoneReached = streakAtual;
-                document.getElementById("milestoneDaysText").innerText = streakAtual + " DIAS";
+                document.getElementById("milestoneDaysText").innerText = streakAtual + (streakAtual === 1 ? " DIA" : " DIAS");
                 openModal("shareMilestoneModal"); 
                 window.triggerConfetti();
             }
@@ -729,6 +734,8 @@
         window.abrirMetas = function() {
             const streak = parseInt(localStorage.getItem("bb_streak") || "0");
             document.getElementById("metasCurrentStreak").innerText = streak;
+            // CORREÇÃO DO PLURAL/SINGULAR AQUI
+            document.getElementById("metasCurrentStreakLabel").innerText = streak === 1 ? "dia" : "dias";
             
             let customMilestones = window.safeJSONParse("bb_custom_milestones", []);
             const listContainer = document.getElementById("milestonesListContainer");
@@ -740,9 +747,16 @@
                 const isCustom = customMilestones.includes(marco);
                 const obj = reached.find(r => r.day === marco);
                 let btnExcluir = isCustom ? `<button onclick="removerMetaCustomizada(${marco})" style="background:none;border:none;color:var(--hard);cursor:pointer;font-size:1.1rem;margin-left:10px;" title="Excluir Meta">🗑️</button>` : '';
+                
+                let lblDia = marco === 1 ? 'Dia' : 'Dias';
 
-                if(obj) html += `<li class="meta-item"><div><span class="meta-checked">✅ ${marco} Dias</span>${btnExcluir}</div> <span class="ranking-stats">Atingido em: <span>${obj.date}</span></span></li>`;
-                else { let faltam = Math.max(0, marco - streak); html += `<li class="meta-item"><div><span class="meta-unchecked">🔒 ${marco} Dias</span>${btnExcluir}</div> <span class="ranking-stats">Faltam <span>${faltam} dias</span></span></li>`; }
+                if(obj) {
+                    html += `<li class="meta-item"><div><span class="meta-checked">✅ ${marco} ${lblDia}</span>${btnExcluir}</div> <span class="ranking-stats">Atingido em: <span>${obj.date}</span></span></li>`;
+                } else { 
+                    let faltam = Math.max(0, marco - streak); 
+                    let faltamLbl = faltam === 1 ? 'dia' : 'dias';
+                    html += `<li class="meta-item"><div><span class="meta-unchecked">🔒 ${marco} ${lblDia}</span>${btnExcluir}</div> <span class="ranking-stats">Faltam <span>${faltam} ${faltamLbl}</span></span></li>`; 
+                }
             });
             listContainer.innerHTML = html; 
             openModal('metasModal');
@@ -771,7 +785,6 @@
             }
         }
 
-        /* ======== LIMPAR HISTÓRICO CORRIGIDO ======== */
         window.clearHistory = async function() {
             if (confirm("ATENÇÃO: Deseja apagar todo o histórico de atividades e o progresso das matérias? O ciclo será zerado.")) {
                 localStorage.removeItem("bb_history_log"); 
@@ -779,12 +792,12 @@
                 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
-                    if (key && key.startsWith("bb_") && !["bb_session_active", "bb_theme", "bb_streak", "bb_last_activity", "bb_custom_milestones", "bb_milestones", "bb_nome", "bb_foto"].includes(key)) {
+                    // CORREÇÃO NA ELIMINAÇÃO DO HISTÓRICO
+                    if (window.isAppKey(key) && !["bb_session_active", "bb_theme", "bb_streak", "bb_last_activity", "bb_custom_milestones", "bb_milestones", "bb_nome", "bb_foto"].includes(key)) {
                         localStorage.removeItem(key);
                     }
                 }
                 
-                // Força Firebase a limpar a árvore
                 if (window.usuarioLogadoUid) { 
                     try { await setDoc(doc(window.firebaseDb, "usuarios", window.usuarioLogadoUid), { progresso: {} }, { merge: true }); } 
                     catch(e){} 
@@ -795,7 +808,7 @@
             }
         }
 
-        /* ======== RANKING GLOBAL SEM SIMULAÇÕES FALSAS ======== */
+        /* ======== RANKING GLOBAL ======== */
         window.abrirRanking = async function() {
             openModal('rankingModal'); 
             document.getElementById("rankingListContainer").style.display = "none"; 
@@ -916,7 +929,7 @@
             window.resetPomodoro();
         }
 
-        /* ======== DASHBOARD & RELATÓRIOS (PDF) ======== */
+        /* ======== DASHBOARD & RELATÓRIOS ======== */
         window.downloadGraphicalPDFReport = function() {
             const opt = {
                 margin: 10,
@@ -932,10 +945,10 @@
             }
             
             const btnClose = el.querySelector('.btn-close-settings');
-            if(btnClose) btnClose.style.display = 'none'; // Esconde botão X
+            if(btnClose) btnClose.style.display = 'none';
             
             html2pdf().from(el).set(opt).save().then(() => {
-                if(btnClose) btnClose.style.display = 'block'; // Volta o botão X
+                if(btnClose) btnClose.style.display = 'block';
             });
         }
 
@@ -958,7 +971,38 @@
             cycleLog.innerHTML = html;
         }
 
-        /* ======== FUNÇÕES DE BACKUP E RESET (QUE ESTAVAM FALTANDO) ======== */
+        /* ======== BACKUP, RESET E CARGA HORÁRIA DINÂMICA ======== */
+        window.saveCustomDayHour = function() {
+            const daySelected = document.getElementById("customHourDaySelect").value;
+            const newHour = document.getElementById("customHourInput").value.trim();
+
+            if (!daySelected || !newHour) {
+                alert("Por favor, selecione um dia e digite a nova carga horária.");
+                return;
+            }
+
+            if (daySelected === "all") {
+                for(let i=1; i<=21; i++) {
+                    salvarItem(`bb_carga_d${i}`, newHour);
+                    window.atualizarCargaNaTela(`d${i}`, newHour);
+                }
+                alert(`Carga horária de "${newHour}" aplicada para todos os dias!`);
+            } else {
+                salvarItem(`bb_carga_${daySelected}`, newHour);
+                window.atualizarCargaNaTela(daySelected, newHour);
+                alert(`Carga horária do ${daySelected.replace('d', 'Dia ')} atualizada para "${newHour}"!`);
+            }
+            document.getElementById("customHourInput").value = "";
+        }
+
+        window.atualizarCargaNaTela = function(dayId, carga) {
+            const num = dayId.replace('d', '');
+            const dayInfoSpan = document.querySelector(`#dia${num} .day-info p:first-child span`);
+            if (dayInfoSpan) {
+                dayInfoSpan.innerText = carga;
+            }
+        }
+
         window.resetProgress = function() {
             if(confirm("Deseja finalizar este ciclo e começar um novo? Seu progresso de matérias marcadas será zerado, mas o histórico de ciclos será salvo!")) {
                 let cycles = window.safeJSONParse("bb_cycle_history", []);
@@ -967,7 +1011,8 @@
                 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
-                    if (key && (key.startsWith("bb_micro_") || key.startsWith("chk-") || key.startsWith("done-") || key.startsWith("status-") || key.startsWith("bb_pending_"))) {
+                    // Usa a nova validação isAppKey
+                    if (window.isAppKey(key) && !["bb_session_active", "bb_theme", "bb_streak", "bb_last_activity", "bb_custom_milestones", "bb_milestones", "bb_nome", "bb_foto"].includes(key)) {
                         localStorage.removeItem(key);
                     }
                 }
@@ -990,7 +1035,8 @@
             const data = {};
             for(let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if(key && key.startsWith("bb_")) data[key] = localStorage.getItem(key);
+                // EXPORTA TUDO QUE É DO SISTEMA
+                if(window.isAppKey(key)) data[key] = localStorage.getItem(key);
             }
             const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
             const url = URL.createObjectURL(blob);
@@ -1020,10 +1066,6 @@
             reader.readAsText(file);
         }
         
-        window.saveCustomDayHour = function() {
-            alert("Personalização de carga horária salva (BETA)!");
-        }
-
         window.addDetailedSimulatedScore = function() {
             alert("Simulado salvo no histórico (BETA)!");
         }
@@ -1060,7 +1102,7 @@
             const shareDiv = document.getElementById("share-certificate-container");
             shareDiv.style.position = "static"; shareDiv.style.left = "0"; 
             document.getElementById("share-user-name").innerText = localStorage.getItem("bb_nome") || "Lara Camurça";
-            document.getElementById("share-streak-days").innerText = window.currentMilestoneReached + " DIAS";
+            document.getElementById("share-streak-days").innerText = window.currentMilestoneReached + (window.currentMilestoneReached === 1 ? " DIA" : " DIAS");
             document.getElementById("share-date-text").innerText = "Meta alcançada em " + new Date().toLocaleDateString('pt-BR');
             
             const opt = { 
@@ -1219,9 +1261,25 @@
         }
         window.showCongratsModal = function(title) { document.getElementById("congratsTitle").innerText = title; openModal("congratsModal"); window.triggerConfetti(); }
 
-        /* ======== INICIALIZAÇÃO ======== */
+        /* ======== INICIALIZAÇÃO E PREENCHIMENTO DO SELECT ======== */
         function initApp() {
             checkStreak();
+            
+            const selectHour = document.getElementById("customHourDaySelect");
+            if (selectHour) {
+                let optionsHTML = '<option value="">-- Selecione o Dia --</option><option value="all">Todos os Dias</option>';
+                for (let i = 1; i <= 21; i++) {
+                    optionsHTML += `<option value="d${i}">Dia ${i}</option>`;
+                }
+                selectHour.innerHTML = optionsHTML;
+            }
+
+            for (let i = 1; i <= 21; i++) {
+                let savedHour = localStorage.getItem(`bb_carga_d${i}`);
+                if (savedHour) {
+                    window.atualizarCargaNaTela(`d${i}`, savedHour);
+                }
+            }
             
             for (let i = 1; i <= 21; i++) { window.renderDayTags('d' + i); }
 
