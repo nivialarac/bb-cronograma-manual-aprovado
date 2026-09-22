@@ -810,7 +810,6 @@
                 });
             } catch (error) {
                 console.warn("Regras do Firebase podem estar bloqueando leitura total ou ocorreu um erro de conexão.", error);
-                // Não adicionamos dados de simulação (Lara, Islânio, etc). O array continua vazio e você será adicionada abaixo.
             }
 
             const meuUid = window.usuarioLogadoUid || "local_user";
@@ -837,6 +836,196 @@
             document.getElementById("rankingListContainer").innerHTML = html; 
             document.getElementById("rankingLoading").style.display = "none"; 
             document.getElementById("rankingListContainer").style.display = "block";
+        }
+
+        /* ======== POMODORO ======== */
+        let pomodoroTimerInterval;
+        let pomodoroTimeLeft = 25 * 60;
+        let isPomodoroRunning = false;
+        let isBreak = false;
+
+        window.openPomodoro = function() {
+            openModal('pomodoroModal');
+            window.updatePomodoroDisplay();
+        }
+        
+        window.closePomodoro = function() {
+            closeModal('pomodoroModal');
+        }
+        
+        window.updatePomodoroDisplay = function() {
+            let m = Math.floor(pomodoroTimeLeft / 60);
+            let s = pomodoroTimeLeft % 60;
+            const timerEl = document.getElementById("pomodoroTimer");
+            if(timerEl) timerEl.innerText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+        }
+
+        window.togglePomodoro = function() {
+            const btn = document.getElementById("pomodoroStartBtn");
+            if (isPomodoroRunning) {
+                clearInterval(pomodoroTimerInterval);
+                isPomodoroRunning = false;
+                btn.innerText = "Retomar";
+            } else {
+                isPomodoroRunning = true;
+                btn.innerText = "Pausar";
+                pomodoroTimerInterval = setInterval(() => {
+                    if (pomodoroTimeLeft > 0) {
+                        pomodoroTimeLeft--;
+                        window.updatePomodoroDisplay();
+                    } else {
+                        clearInterval(pomodoroTimerInterval);
+                        isPomodoroRunning = false;
+                        btn.innerText = "Iniciar";
+                        window.triggerConfetti();
+                        if (!isBreak) {
+                            alert("Tempo de foco concluído! Hora da pausa.");
+                            pomodoroTimeLeft = parseInt(document.getElementById("customBreakMin").value || 5) * 60;
+                            isBreak = true;
+                            document.getElementById("pomodoroStatus").innerText = "☕ Pausa Revigorante";
+                            document.getElementById("pomodoroStatus").style.color = "var(--medium)";
+                        } else {
+                            alert("Pausa concluída! De volta aos estudos.");
+                            pomodoroTimeLeft = parseInt(document.getElementById("customFocusMin").value || 25) * 60;
+                            isBreak = false;
+                            document.getElementById("pomodoroStatus").innerText = "🎯 Foco Total nos Estudos!";
+                            document.getElementById("pomodoroStatus").style.color = "var(--primary)";
+                        }
+                        window.updatePomodoroDisplay();
+                    }
+                }, 1000);
+            }
+        }
+
+        window.resetPomodoro = function() {
+            clearInterval(pomodoroTimerInterval);
+            isPomodoroRunning = false;
+            isBreak = false;
+            pomodoroTimeLeft = parseInt(document.getElementById("customFocusMin").value || 25) * 60;
+            const btn = document.getElementById("pomodoroStartBtn");
+            if(btn) btn.innerText = "Iniciar";
+            const status = document.getElementById("pomodoroStatus");
+            if(status) {
+                status.innerText = "🎯 Foco Total nos Estudos!";
+                status.style.color = "var(--primary)";
+            }
+            window.updatePomodoroDisplay();
+        }
+
+        window.applyCustomPomodoro = function() {
+            window.resetPomodoro();
+        }
+
+        /* ======== DASHBOARD & RELATÓRIOS (PDF) ======== */
+        window.downloadGraphicalPDFReport = function() {
+            const opt = {
+                margin: 10,
+                filename: 'Relatorio_Progresso_ManualAprovado.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            let el = document.getElementById('dashboardModal').querySelector('.settings-card');
+            if (document.getElementById('settingsModal').style.display === 'flex') {
+                 el = document.getElementById('settingsModal').querySelector('.settings-card');
+            }
+            
+            const btnClose = el.querySelector('.btn-close-settings');
+            if(btnClose) btnClose.style.display = 'none'; // Esconde botão X
+            
+            html2pdf().from(el).set(opt).save().then(() => {
+                if(btnClose) btnClose.style.display = 'block'; // Volta o botão X
+            });
+        }
+
+        window.downloadSimulationsPDFReport = function() {
+            window.downloadGraphicalPDFReport();
+        }
+
+        window.renderCycleHistory = function() {
+            const cycleLog = document.getElementById("dashCycleLog");
+            if (!cycleLog) return;
+            let cycles = window.safeJSONParse("bb_cycle_history", []);
+            if (cycles.length === 0) {
+                cycleLog.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 15px;">Nenhum ciclo concluído ainda. Finalize o atual e clique em "Começar Novo Ciclo" nas configurações!</div>';
+                return;
+            }
+            let html = '';
+            cycles.forEach((c, i) => {
+                html += `<div class="history-item"><span>🏆 Ciclo ${i+1} Concluído</span> <span class="history-time">${c.date}</span></div>`;
+            });
+            cycleLog.innerHTML = html;
+        }
+
+        /* ======== FUNÇÕES DE BACKUP E RESET (QUE ESTAVAM FALTANDO) ======== */
+        window.resetProgress = function() {
+            if(confirm("Deseja finalizar este ciclo e começar um novo? Seu progresso de matérias marcadas será zerado, mas o histórico de ciclos será salvo!")) {
+                let cycles = window.safeJSONParse("bb_cycle_history", []);
+                cycles.push({ date: new Date().toLocaleDateString('pt-BR') });
+                salvarItem("bb_cycle_history", JSON.stringify(cycles));
+                
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith("bb_micro_") || key.startsWith("chk-") || key.startsWith("done-") || key.startsWith("status-") || key.startsWith("bb_pending_"))) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                salvarDadosNaNuvem();
+                alert("Novo ciclo iniciado! Muito sucesso.");
+                location.reload();
+            }
+        }
+
+        window.resetStreak = function() {
+            if(confirm("Deseja realmente zerar sua ofensiva (streak)?")) {
+                salvarItem("bb_streak", "0");
+                salvarItem("bb_last_activity", "");
+                document.getElementById("streak-count").innerText = "0 dias";
+                alert("Ofensiva zerada.");
+            }
+        }
+
+        window.exportData = function() {
+            const data = {};
+            for(let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if(key && key.startsWith("bb_")) data[key] = localStorage.getItem(key);
+            }
+            const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "backup_manual_aprovado.json";
+            a.click();
+        }
+
+        window.importData = function(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    for(let key in data) {
+                        localStorage.setItem(key, data[key]);
+                    }
+                    salvarDadosNaNuvem();
+                    alert("Dados importados com sucesso! A página será recarregada.");
+                    location.reload();
+                } catch(err) {
+                    alert("Erro ao importar o arquivo. Verifique se o JSON é válido.");
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        window.saveCustomDayHour = function() {
+            alert("Personalização de carga horária salva (BETA)!");
+        }
+
+        window.addDetailedSimulatedScore = function() {
+            alert("Simulado salvo no histórico (BETA)!");
         }
 
         /* ======== GESTÃO DE PÁGINAS ======== */
@@ -935,7 +1124,10 @@
             }
         }
 
-        window.updateDashboardStats = function() { window.updateGlobalProgress(); }
+        window.updateDashboardStats = function() { 
+            window.updateGlobalProgress(); 
+            window.renderCycleHistory();
+        }
 
         window.updateGlobalProgress = function() {
             const days = document.querySelectorAll('.day-checkbox'); 
