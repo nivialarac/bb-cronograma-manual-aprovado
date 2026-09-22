@@ -3049,7 +3049,7 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-        // 2. O SEU FIREBASE CONFIG (O bilhete de identidade do seu projeto)
+        // 2. O SEU FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyC3y01o2AXgHX7uFZHgXcgp9lhmaj-k1jM",
             authDomain: "manual-do-aprovado.firebaseapp.com",
@@ -3071,10 +3071,8 @@
         window.setDoc = setDoc;
         window.getDoc = getDoc;
 
-        // Variável para guardar o ID de quem entrou
         window.usuarioLogadoUid = null;
 
-        // Mantém as frases que já lá estavam
         const motivationalPhrases = [
             "“O sucesso é a soma de pequenos esforços repetidos dia após dia.” – Robert Collier",
             "“A persistência é o menor caminho para o êxito.” – Charles Chaplin",
@@ -3090,7 +3088,7 @@
             initAllTags();
         });
 
-        /* --- NOVA AUTENTICAÇÃO COM FIREBASE --- */
+        /* --- AUTENTICAÇÃO COM FIREBASE --- */
         function checkAuth() {
             window.onAuthStateChanged(window.firebaseAuth, (user) => {
                 if (user) {
@@ -3130,7 +3128,6 @@
             }
         }
 
-        // Ponte para o HTML
         window.handleLogin = handleLogin;
         window.logout = logout;
 
@@ -3180,22 +3177,66 @@
             salvarDadosNaNuvem();
         }
 
-        /* --- RESTO DO CÓDIGO ORIGINAL --- */
+        /* --- GESTÃO DE OFENSIVA (STREAK) --- */
+        function checkStreak() {
+            const lastActivity = localStorage.getItem("bb_last_activity");
+            let streak = parseInt(localStorage.getItem("bb_streak") || "0");
+            
+            if (lastActivity) {
+                const lastDate = new Date(lastActivity);
+                const currentDate = new Date();
+                currentDate.setHours(0,0,0,0);
+                lastDate.setHours(0,0,0,0);
+                const diffDays = Math.round((currentDate - lastDate) / (1000 * 60 * 60 * 24));
 
-        /* --- POPULAR SELECT DO PERSONALIZADOR DE CARGA --- */
-        function populateCustomHourSelect() {
-            const select = document.getElementById("customHourDaySelect");
-            if (!select) return;
-            let html = '';
-            for (let i = 1; i <= 21; i++) {
-                html += `<option value="d${i}">Dia ${i}</option>`;
+                if (diffDays > 1) {
+                    streak = 0;
+                    salvarItem("bb_streak", "0");
+                }
             }
-            select.innerHTML = html;
+            const streakEl = document.getElementById("streak-count");
+            if(streakEl) streakEl.innerText = `${streak} ${streak === 1 ? 'dia' : 'dias'}`;
         }
 
-        // --- ATENÇÃO: As funções abaixo agora usam salvarItem no lugar de localStorage.setItem ---
+        function updateStreakOnAction() {
+            const todayStr = new Date().toDateString();
+            const lastActivity = localStorage.getItem("bb_last_activity");
+            let streak = parseInt(localStorage.getItem("bb_streak") || "0");
 
-        // Torna essas funções globais para o HTML conseguir chamá-las
+            if (lastActivity !== todayStr) {
+                if (!lastActivity) {
+                    streak = 1;
+                } else {
+                    const lastDate = new Date(lastActivity);
+                    const currentDate = new Date();
+                    currentDate.setHours(0,0,0,0);
+                    lastDate.setHours(0,0,0,0);
+                    const diffDays = Math.round((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+
+                    if (diffDays === 1) {
+                        streak += 1;
+                    } else if (diffDays > 1) {
+                        streak = 1;
+                    }
+                }
+                salvarItem("bb_last_activity", todayStr);
+                salvarItem("bb_streak", streak);
+            }
+            const streakEl = document.getElementById("streak-count");
+            if(streakEl) streakEl.innerText = `${streak} ${streak === 1 ? 'dia' : 'dias'}`;
+        }
+
+        function resetStreak() {
+            if (confirm("Tem certeza que deseja zerar sua ofensiva (streak)?")) {
+                salvarItem("bb_streak", "0");
+                localStorage.removeItem("bb_last_activity");
+                salvarDadosNaNuvem();
+                checkStreak();
+                alert("Ofensiva zerada com sucesso!");
+            }
+        }
+
+        /* --- EXPORTAÇÃO GLOBAL DE FUNÇÕES --- */
         window.saveCustomDayHour = saveCustomDayHour;
         window.addDayTag = addDayTag;
         window.removeDayTag = removeDayTag;
@@ -3233,7 +3274,7 @@
                 alert("Por favor, informe a nova carga horária.");
                 return;
             }
-            salvarItem("bb_carga_" + dayKey, hourText); // Modificado
+            salvarItem("bb_carga_" + dayKey, hourText);
             
             const card = document.getElementById('dia' + dayKey.replace('d', ''));
             if (card) {
@@ -3244,6 +3285,16 @@
             addHistoryEntry(`Carga horária atualizada: Dia ${dayKey.replace('d','')} para ${hourText}`);
             alert(`Carga horária do Dia ${dayKey.replace('d','')} atualizada para ${hourText} com sucesso!`);
             document.getElementById("customHourInput").value = "";
+        }
+
+        function populateCustomHourSelect() {
+            const select = document.getElementById("customHourDaySelect");
+            if (!select) return;
+            let html = '';
+            for (let i = 1; i <= 21; i++) {
+                html += `<option value="d${i}">Dia ${i}</option>`;
+            }
+            select.innerHTML = html;
         }
 
         /* --- SISTEMA DE TAGS POR DIA --- */
@@ -3257,7 +3308,7 @@
 
             let tags = JSON.parse(localStorage.getItem(`bb_tags_${dayId}`) || "[]");
             tags.push(val);
-            salvarItem(`bb_tags_${dayId}`, JSON.stringify(tags)); // Modificado
+            salvarItem(`bb_tags_${dayId}`, JSON.stringify(tags));
 
             input.value = "";
             renderDayTags(dayId);
@@ -3267,7 +3318,7 @@
         function removeDayTag(dayId, index) {
             let tags = JSON.parse(localStorage.getItem(`bb_tags_${dayId}`) || "[]");
             tags.splice(index, 1);
-            salvarItem(`bb_tags_${dayId}`, JSON.stringify(tags)); // Modificado
+            salvarItem(`bb_tags_${dayId}`, JSON.stringify(tags));
             renderDayTags(dayId);
         }
 
@@ -3316,7 +3367,7 @@
             }
 
             if (save) {
-                salvarItem("bb_theme", mode); // Modificado
+                salvarItem("bb_theme", mode);
             }
         }
 
@@ -3333,7 +3384,7 @@
             }
         }
 
-        /* --- PESQUISA FUNCIONAL (EXPANDE SEMANAS AUTOMATICAMENTE) --- */
+        /* --- PESQUISA FUNCIONAL --- */
         function filterTopics() {
             const rawQuery = document.getElementById("searchInput").value;
             const query = rawQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -3354,7 +3405,7 @@
             });
         }
 
-        /* --- POMODORO TIMER APORIMORADO (FOCO & PAUSA EM TEMPO REAL) --- */
+        /* --- POMODORO TIMER --- */
         function openPomodoro() {
             document.getElementById("pomodoroModal").style.display = "flex";
         }
@@ -3403,17 +3454,17 @@
                         window.isPomodoroRunning = false;
                         
                         if (window.isFocusMode) {
-                            addHistoryEntry(`Sessão Pomodoro de Foco concluída (${window.currentFocusMins} min)`);
-                            alert(`🎉 Foco concluído! Hora de uma pausa de ${window.currentBreakMins} minutos.`);
+                            addHistoryEntry(`Sessão Pomodoro de Foco concluída (${window.currentFocusMins || 25} min)`);
+                            alert(`🎉 Foco concluído! Hora de uma pausa de ${window.currentBreakMins || 5} minutos.`);
                             window.isFocusMode = false;
-                            window.pomodoroTimeLeft = window.currentBreakMins * 60;
+                            window.pomodoroTimeLeft = (window.currentBreakMins || 5) * 60;
                             statusEl.innerText = "☕ Hora do Descanso / Pausa";
                             btn.innerText = "Iniciar Pausa";
                         } else {
-                            addHistoryEntry(`Intervalo de Pausa concluído (${window.currentBreakMins} min)`);
+                            addHistoryEntry(`Intervalo de Pausa concluído (${window.currentBreakMins || 5} min)`);
                             alert(`🔔 Pausa concluída! Retornando ao foco nos estudos.`);
                             window.isFocusMode = true;
-                            window.pomodoroTimeLeft = window.currentFocusMins * 60;
+                            window.pomodoroTimeLeft = (window.currentFocusMins || 25) * 60;
                             statusEl.innerText = "🎯 Foco Total nos Estudos!";
                             btn.innerText = "Iniciar Foco";
                         }
@@ -3456,7 +3507,7 @@
                     navLink.classList.remove("done-nav");
                     navLink.classList.add("pending-nav");
                 }
-                salvarItem("bb_pending_" + dayId, "true"); // Modificado
+                salvarItem("bb_pending_" + dayId, "true");
                 addHistoryEntry(`Marcado como Pendente: ${dayLabel}`);
             } else {
                 card.classList.remove("is-pending");
@@ -3464,7 +3515,7 @@
                 btn.style.color = "";
                 if (navLink) navLink.classList.remove("pending-nav");
                 localStorage.removeItem("bb_pending_" + dayId);
-                salvarDadosNaNuvem(); // Modificado
+                salvarDadosNaNuvem();
                 addHistoryEntry(`Removido status pendente: ${dayLabel}`);
             }
         }
@@ -3476,13 +3527,13 @@
             if (!chk) return;
             if (chk.checked) {
                 if (lbl) lbl.classList.add("checked");
-                salvarItem("bb_micro_" + microId, "true"); // Modificado
+                salvarItem("bb_micro_" + microId, "true");
                 addHistoryEntry(`Estudado sub-tópico: ${labelName}`);
                 updateDashboardStats();
             } else {
                 if (lbl) lbl.classList.remove("checked");
                 localStorage.removeItem("bb_micro_" + microId);
-                salvarDadosNaNuvem(); // Modificado
+                salvarDadosNaNuvem();
                 addHistoryEntry(`Desmarcado sub-tópico: ${labelName}`);
                 updateDashboardStats();
             }
@@ -3490,7 +3541,7 @@
             updateDayProgress('d' + dayNum);
         }
 
-        /* --- ATUALIZAR BARRA DE PROGRESSO DO DIA --- */
+        /* --- ATUALIZAR BARRA DE PROGRESSO DO DIA (CORRIGIDO) --- */
         function updateDayProgress(daySuffix) {
             const num = daySuffix.replace('dia', '').replace('d', '');
             const cardId = 'dia' + num;
@@ -3518,9 +3569,21 @@
             if (fillEl) fillEl.style.width = pct + "%";
             if (textEl) textEl.innerText = `${pct}% do dia concluído!`;
             if (pctEl) pctEl.innerText = `${pct}%`;
+
+            // Garante o fechamento automático da caixa "Concluir Dia" ao atingir 100%
+            const chkDone = document.getElementById(`done-d${num}`);
+            if (chkDone) {
+                if (pct === 100 && !chkDone.checked) {
+                    chkDone.checked = true;
+                    chkDone.dispatchEvent(new Event('change'));
+                } else if (pct < 100 && chkDone.checked) {
+                    chkDone.checked = false;
+                    chkDone.dispatchEvent(new Event('change'));
+                }
+            }
         }
 
-        /* --- CURVA DE APRENDIZAGEM & SIMULADOS (COM TEMPO E LINK) --- */
+        /* --- SIMULADOS E DASHBOARD --- */
         function addDetailedSimulatedScore() {
             const nameInput = document.getElementById("simTestName");
             const correctInput = document.getElementById("simCorrect");
@@ -3579,7 +3642,7 @@
             };
 
             sims.push(newSim);
-            salvarItem("bb_detailed_simulations", JSON.stringify(sims)); // Modificado
+            salvarItem("bb_detailed_simulations", JSON.stringify(sims));
 
             nameInput.value = "";
             correctInput.value = "";
@@ -3597,7 +3660,7 @@
             if (confirm("Deseja excluir este registro de simulado?")) {
                 let sims = JSON.parse(localStorage.getItem("bb_detailed_simulations") || "[]");
                 sims = sims.filter(s => s.id !== id);
-                salvarItem("bb_detailed_simulations", JSON.stringify(sims)); // Modificado
+                salvarItem("bb_detailed_simulations", JSON.stringify(sims));
                 renderSimulatedChartAndList();
                 addHistoryEntry("Registro de simulado excluído");
             }
@@ -3625,7 +3688,7 @@
             }
 
             let chartHtml = '';
-            sims.forEach((item, idx) => {
+            sims.forEach((item) => {
                 chartHtml += `
                     <div class="chart-bar-wrapper" title="${item.name}: ${item.score}% (${item.correct}/${item.total}) - ${item.date}">
                         <span style="font-size: 0.7rem; font-weight: bold; margin-bottom: 2px;">${item.score}%</span>
@@ -3670,7 +3733,7 @@
             listContainer.innerHTML = listHtml;
         }
 
-        /* --- GERADOR DE RELATÓRIO GRÁFICO EM PDF --- */
+        /* --- RELATÓRIOS PDF --- */
         function downloadGraphicalPDFReport() {
             const history = JSON.parse(localStorage.getItem("bb_history_log") || "[]");
             const days = document.querySelectorAll('.day-checkbox');
@@ -3770,7 +3833,6 @@
             addHistoryEntry("Gerado e baixado relatório executivo em PDF");
         }
 
-        /* --- GERADOR DE RELATÓRIO GRÁFICO DE SIMULADOS EM PDF --- */
         function downloadSimulationsPDFReport() {
             let sims = JSON.parse(localStorage.getItem("bb_detailed_simulations") || "[]");
             if (sims.length === 0) {
@@ -3793,7 +3855,7 @@
             let bestSim = sims.reduce((best, s) => s.score > best.score ? s : best, sims[0]);
 
             let simsHtml = '';
-            sims.slice().reverse().forEach((item, index) => {
+            sims.slice().reverse().forEach((item) => {
                 let comparisonBadge = '';
                 if (item.linkedId) {
                     const prev = sims.find(s => s.id === item.linkedId);
@@ -3865,7 +3927,7 @@
             addHistoryEntry("Gerado e baixado relatório de simulados em PDF com dashboard");
         }
 
-        /* --- BACKUP E RESTAURAÇÃO DE DADOS --- */
+        /* --- BACKUP E RESTAURAÇÃO --- */
         function exportData() {
             let data = {};
             for (let i = 0; i < localStorage.length; i++) {
@@ -3889,7 +3951,7 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     for (const key in data) {
-                        salvarItem(key, data[key]); // Modificado
+                        salvarItem(key, data[key]);
                     }
                     alert("Dados importados com sucesso! A página será recarregada.");
                     location.reload();
@@ -3900,7 +3962,7 @@
             reader.readAsText(file);
         }
 
-        /* --- ANIMAÇÃO DE CONFETES E MODAL DE PARABÉNS (DIA OU CICLO) --- */
+        /* --- CONFETES E MODAL DE PARABÉNS --- */
         function triggerConfetti() {
             const colors = ['#0284c7', '#7c3aed', '#10b981', '#38bdf8', '#f59e0b'];
             for (let i = 0; i < 120; i++) {
@@ -3946,7 +4008,7 @@
             if (modal) modal.style.display = "none";
         }
 
-        /* --- MODAL DE DASHBOARD E CONFIG --- */
+        /* --- MODAIS DE DASHBOARD E CONFIG --- */
         function openSettings() {
             document.getElementById("settingsModal").style.display = "flex";
             renderHistory();
@@ -4074,7 +4136,7 @@
                 timestamp: getFormattedDateTime()
             };
             history.unshift(entry);
-            salvarItem("bb_history_log", JSON.stringify(history)); // Modificado
+            salvarItem("bb_history_log", JSON.stringify(history));
             renderHistory();
         }
 
@@ -4108,7 +4170,7 @@
             if (confirm("Deseja excluir o registro?")) {
                 let history = JSON.parse(localStorage.getItem("bb_history_log") || "[]");
                 history.splice(index, 1);
-                salvarItem("bb_history_log", JSON.stringify(history)); // Modificado
+                salvarItem("bb_history_log", JSON.stringify(history));
                 renderHistory();
             }
         }
@@ -4116,7 +4178,7 @@
         function clearHistory() {
             if (confirm("Tem certeza que deseja apagar todo o histórico de atividades e zerar o progresso do ciclo atual?")) {
                 localStorage.removeItem("bb_history_log");
-                salvarItem('bb_cycle_count', '1'); // Modificado
+                salvarItem('bb_cycle_count', '1');
                 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
@@ -4124,7 +4186,7 @@
                         localStorage.removeItem(key);
                     }
                 }
-                salvarDadosNaNuvem(); // Força sincronização após a limpeza
+                salvarDadosNaNuvem();
                 
                 addHistoryEntry("🔄 Iniciado Ciclo de Estudos (Ciclo 1)");
                 alert("Histórico e progresso zerados com sucesso!");
@@ -4142,7 +4204,7 @@
                     text: "🔄 Iniciado Ciclo de Estudos (Ciclo 1)",
                     timestamp: getFormattedDateTime()
                 });
-                salvarItem("bb_history_log", JSON.stringify(history)); // Modificado
+                salvarItem("bb_history_log", JSON.stringify(history));
             }
 
             for (let i = 1; i <= 21; i++) {
@@ -4206,14 +4268,13 @@
                         btn.classList.remove("todo");
                         btn.classList.add("done");
                         btn.innerText = "✓ ESTUDADO";
-                        salvarItem(btn.id, "done"); // Modificado
+                        salvarItem(btn.id, "done");
                         addHistoryEntry(`Conteúdo Estudado: ${title}`);
-                        updateStreakOnAction();
                     } else {
                         btn.classList.remove("done");
                         btn.classList.add("todo");
                         btn.innerText = "[ A FAZER ]";
-                        salvarItem(btn.id, "todo"); // Modificado
+                        salvarItem(btn.id, "todo");
                         addHistoryEntry(`Conteúdo desmarcado: ${title}`);
                     }
                     const card = btn.closest('.day-card');
@@ -4231,7 +4292,7 @@
                 }
 
                 chk.addEventListener("change", function() {
-                    salvarItem(chk.id, chk.checked); // Modificado
+                    salvarItem(chk.id, chk.checked);
                     if (chk.checked) {
                         chk.parentElement.classList.add("checked");
                     } else {
@@ -4273,7 +4334,7 @@
                 }
 
                 chk.addEventListener("change", function() {
-                    salvarItem(chk.id, chk.checked); // Modificado
+                    salvarItem(chk.id, chk.checked);
                     if (chk.checked) {
                         dayCard.classList.add("is-done");
                         if (navLink) navLink.classList.add("done-nav");
@@ -4315,11 +4376,11 @@
 
             if (percent === 100 && !localStorage.getItem("bb_cycle_finished_logged")) {
                 addHistoryEntry(`🎉 CICLO ${cycleCount} 100% CONCLUÍDO!`);
-                salvarItem("bb_cycle_finished_logged", "true"); // Modificado
+                salvarItem("bb_cycle_finished_logged", "true");
                 showCongratsModal(`Parabéns, Ciclo ${cycleCount} Concluído!`);
             } else if (percent < 100) {
                 localStorage.removeItem("bb_cycle_finished_logged");
-                salvarDadosNaNuvem(); // Sincroniza a remoção do log
+                salvarDadosNaNuvem();
             }
         }
 
@@ -4327,7 +4388,7 @@
             if (confirm("Tem certeza que deseja começar um novo ciclo? As marcações dos dias e matérias serão resetadas e o ciclo voltará para o Ciclo 1 (seu histórico e ofensiva serão mantidos).")) {
                 let currentCycle = parseInt(localStorage.getItem('bb_cycle_count') || '1');
                 let nextCycle = currentCycle + 1;
-                salvarItem('bb_cycle_count', nextCycle); // Modificado
+                salvarItem('bb_cycle_count', nextCycle);
                 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
@@ -4335,7 +4396,7 @@
                         localStorage.removeItem(key);
                     }
                 }
-                salvarDadosNaNuvem(); // Força a sincronização da limpeza
+                salvarDadosNaNuvem();
                 addHistoryEntry(`🔄 Iniciado Ciclo de Estudos (Ciclo ${nextCycle})`);
                 location.reload();
             }
